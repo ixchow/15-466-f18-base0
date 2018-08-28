@@ -5,7 +5,7 @@ Title: (TODO: your game's title)
 
 Author: (TODO: your name)
 
-Design Document: (TODO: name of design document)[TODO: link to design document]
+Design Document: [TODO: name of design document](TODO: link to design document)
 
 Screen Shot:
 
@@ -62,7 +62,7 @@ and put it somewhere in your `%PATH%`.
 
 ### Libraries
 
-This code uses the (libSDL)[https://www.libsdl.org/] library to create an OpenGL context, and the (glm)[https://glm.g-truc.net] library for OpenGL-friendly matrix/vector types.
+This code uses the [libSDL](https://www.libsdl.org/) library to create an OpenGL context, and the [glm](https://glm.g-truc.net) library for OpenGL-friendly matrix/vector types.
 On MacOS and Linux, the code should work out-of-the-box if if you have these installed through your package manager.
 
 If you are compiling on Windows or don't want to install these libraries globally there are pre-built library packages available in the
