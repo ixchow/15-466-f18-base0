@@ -61,6 +61,7 @@ static std::string get_data_path() {
 		ret = ret.substr(0, ret.size() - 5) + "Resources";
 	}
 
+	return ret;
 	#else
 	#error "No idea what the OS is."
 	#endif
