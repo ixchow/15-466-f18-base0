@@ -40,6 +40,7 @@ struct Game {
 		GLuint normal_to_light_mat3 = -1U;
 		GLuint sun_direction_vec3 = -1U;
 		GLuint sun_color_vec3 = -1U;
+		GLuint sky_direction_vec3 = -1U;
 		GLuint sky_color_vec3 = -1U;
 
 		//attribute locations:
@@ -56,6 +57,7 @@ struct Game {
 		GLint first = 0;
 		GLsizei count = 0;
 	};
+
 	Mesh tile_mesh;
 	Mesh cursor_mesh;
 	Mesh doll_mesh;
@@ -70,13 +72,9 @@ struct Game {
 	std::vector< Mesh const * > board_meshes;
 	std::vector< glm::quat > board_rotations;
 
-	glm::vec2 cursor = glm::vec2(0.0f,0.0f);
+	glm::uvec2 cursor = glm::vec2(0,0);
 
 	struct {
-		bool move_left = false;
-		bool move_right = false;
-		bool move_up = false;
-		bool move_down = false;
 		bool roll_left = false;
 		bool roll_right = false;
 		bool roll_up = false;

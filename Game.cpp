@@ -10,6 +10,7 @@
 #include <fstream>
 #include <map>
 #include <cstddef>
+#include <random>
 
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
@@ -39,6 +40,7 @@ Game::Game() {
 			"#version 330\n"
 			"uniform vec3 sun_direction;\n"
 			"uniform vec3 sun_color;\n"
+			"uniform vec3 sky_direction;\n"
 			"uniform vec3 sky_color;\n"
 			"in vec3 position;\n"
 			"in vec3 normal;\n"
@@ -48,7 +50,7 @@ Game::Game() {
 			"	vec3 total_light = vec3(0.0, 0.0, 0.0);\n"
 			"	vec3 n = normalize(normal);\n"
 			"	{ //sky (hemisphere) light:\n"
-			"		vec3 l = vec3(0.0, 0.0, 1.0);\n"
+			"		vec3 l = sky_direction;\n"
 			"		float nl = 0.5 + 0.5 * dot(n,l);\n"
 			"		total_light += nl * sky_color;\n"
 			"	}\n"
@@ -86,13 +88,12 @@ Game::Game() {
 
 	{ //read back uniform and attribute locations from the shader program:
 		simple_shading.object_to_clip_mat4 = glGetUniformLocation(simple_shading.program, "object_to_clip");
-		std::cout << "simple_shading.object_to_clip_mat4:" << GLint(simple_shading.object_to_clip_mat4) << std::endl; //DEBUG
 		simple_shading.object_to_light_mat4x3 = glGetUniformLocation(simple_shading.program, "object_to_light");
-		std::cout << "simple_shading.object_to_light_mat4x3:" << GLint(simple_shading.object_to_light_mat4x3) << std::endl; //DEBUG
 		simple_shading.normal_to_light_mat3 = glGetUniformLocation(simple_shading.program, "normal_to_light");
-		std::cout << "simple_shading.normal_to_light_mat3:" << GLint(simple_shading.normal_to_light_mat3) << std::endl; //DEBUG
+
 		simple_shading.sun_direction_vec3 = glGetUniformLocation(simple_shading.program, "sun_direction");
 		simple_shading.sun_color_vec3 = glGetUniformLocation(simple_shading.program, "sun_color");
+		simple_shading.sky_direction_vec3 = glGetUniformLocation(simple_shading.program, "sky_direction");
 		simple_shading.sky_color_vec3 = glGetUniformLocation(simple_shading.program, "sky_color");
 
 		simple_shading.Position_vec4 = glGetAttribLocation(simple_shading.program, "Position");
@@ -173,9 +174,9 @@ Game::Game() {
 			return f->second;
 		};
 		tile_mesh = lookup("Tile");
-		cursor_mesh = lookup("Cube");
-		doll_mesh = lookup("Cube");
-		egg_mesh = lookup("Cube");
+		cursor_mesh = lookup("Cursor");
+		doll_mesh = lookup("Doll");
+		egg_mesh = lookup("Egg");
 		cube_mesh = lookup("Cube");
 	}
 
@@ -203,8 +204,12 @@ Game::Game() {
 	//set up game board with meshes and rolls:
 	board_meshes.reserve(board_size.x * board_size.y);
 	board_rotations.reserve(board_size.x * board_size.y);
+	std::mt19937 mt(0xbead1234);
+
+	std::vector< Mesh const * > meshes{ &doll_mesh, &egg_mesh, &cube_mesh };
+
 	for (uint32_t i = 0; i < board_size.x * board_size.y; ++i) {
-		board_meshes.emplace_back(&cube_mesh);
+		board_meshes.emplace_back(meshes[mt()%meshes.size()]);
 		board_rotations.emplace_back(glm::quat());
 	}
 }
@@ -223,20 +228,13 @@ Game::~Game() {
 }
 
 bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
+	//ignore any keys that are the result of automatic key repeat:
+	if (evt.type == SDL_KEYDOWN && evt.key.repeat) {
+		return false;
+	}
+	//handle tracking the state of WSAD for roll control:
 	if (evt.type == SDL_KEYDOWN || evt.type == SDL_KEYUP) {
-		if        (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
-			controls.move_up = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
-			controls.move_down = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
-			controls.move_left = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
-			controls.move_right = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_W) {
+		if (evt.key.keysym.scancode == SDL_SCANCODE_W) {
 			controls.roll_up = (evt.type == SDL_KEYDOWN);
 			return true;
 		} else if (evt.key.keysym.scancode == SDL_SCANCODE_S) {
@@ -250,10 +248,35 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 			return true;
 		}
 	}
+	//move cursor on L/R/U/D press:
+	if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
+		if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
+			if (cursor.x > 0) {
+				cursor.x -= 1;
+			}
+			return true;
+		} else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
+			if (cursor.x + 1 < board_size.x) {
+				cursor.x += 1;
+			}
+			return true;
+		} else if (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
+			if (cursor.y + 1 < board_size.y) {
+				cursor.y += 1;
+			}
+			return true;
+		} else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
+			if (cursor.y > 0) {
+				cursor.y -= 1;
+			}
+			return true;
+		}
+	}
 	return false;
 }
 
 void Game::update(float elapsed) {
+	//if the roll keys are pressed, rotate everything on the same row or column as the cursor:
 	glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	float amt = elapsed * 1.0f;
 	if (controls.roll_left) {
@@ -269,13 +292,14 @@ void Game::update(float elapsed) {
 		dr = glm::angleAxis(-amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
 	}
 	if (dr != glm::quat()) {
-		glm::ivec2 cursori = glm::ivec2(std::round(cursor.x), std::round(cursor.y));
+		for (uint32_t x = 0; x < board_size.x; ++x) {
+			glm::quat &r = board_rotations[cursor.y * board_size.x + x];
+			r = glm::normalize(dr * r);
+		}
 		for (uint32_t y = 0; y < board_size.y; ++y) {
-			for (uint32_t x = 0; x < board_size.x; ++x) {
-				if (int32_t(x) == cursori.x || int32_t(y) == cursori.y) {
-					glm::quat &r = board_rotations[y * board_size.x + x];
-					r = glm::normalize(dr * r);
-				}
+			if (y != cursor.y) {
+				glm::quat &r = board_rotations[y * board_size.x + cursor.x];
+				r = glm::normalize(dr * r);
 			}
 		}
 	}
@@ -309,9 +333,10 @@ void Game::draw(glm::uvec2 drawable_size) {
 	glBindVertexArray(meshes_for_simple_shading_vao);
 	glUseProgram(simple_shading.program);
 
-	glUniform3fv(simple_shading.sun_color_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	glUniform3fv(simple_shading.sun_color_vec3, 1, glm::value_ptr(glm::vec3(0.81f, 0.81f, 0.76f)));
 	glUniform3fv(simple_shading.sun_direction_vec3, 1, glm::value_ptr(glm::normalize(glm::vec3(-0.2f, 0.2f, 1.0f))));
 	glUniform3fv(simple_shading.sky_color_vec3, 1, glm::value_ptr(glm::vec3(0.2f, 0.2f, 0.3f)));
+	glUniform3fv(simple_shading.sky_direction_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 1.0f, 0.0f)));
 
 	//helper function to draw a given mesh with a given transformation:
 	auto draw_mesh = [&](Mesh const &mesh, glm::mat4 const &object_to_world) {
@@ -335,7 +360,15 @@ void Game::draw(glm::uvec2 drawable_size) {
 
 	for (uint32_t y = 0; y < board_size.y; ++y) {
 		for (uint32_t x = 0; x < board_size.x; ++x) {
-			draw_mesh(cube_mesh,
+			draw_mesh(tile_mesh,
+				glm::mat4(
+					1.0f, 0.0f, 0.0f, 0.0f,
+					0.0f, 1.0f, 0.0f, 0.0f,
+					0.0f, 0.0f, 1.0f, 0.0f,
+					x+0.5f, y+0.5f,-0.5f, 1.0f
+				)
+			);
+			draw_mesh(*board_meshes[y*board_size.x+x],
 				glm::mat4(
 					1.0f, 0.0f, 0.0f, 0.0f,
 					0.0f, 1.0f, 0.0f, 0.0f,
