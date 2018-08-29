@@ -2,6 +2,7 @@
 
 #include "gl_errors.hpp" //helper for dumpping OpenGL error messages
 #include "read_chunk.hpp" //helper for reading a vector of structures from a file
+#include "data_path.hpp" //helper to get paths relative to executable
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -107,7 +108,7 @@ Game::Game() {
 	static_assert(sizeof(Vertex) == 28, "Vertex should be packed.");
 
 	{ //load mesh data from a binary blob:
-		std::ifstream blob("meshes.blob", std::ios::binary);
+		std::ifstream blob(data_path("meshes.blob"), std::ios::binary);
 		//The blob will be made up of three chunks:
 		// the first chunk will be vertex data (interleaved position/normal/color)
 		// the second chunk will be characters
@@ -253,23 +254,29 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 }
 
 void Game::update(float elapsed) {
-	glm::quat dr = glm::quat();
+	glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	float amt = elapsed * 1.0f;
 	if (controls.roll_left) {
-		dr = glm::angleAxis(amt, glm::vec3(0.0f, 1.0f, 0.0f));
+		dr = glm::angleAxis(amt, glm::vec3(0.0f, 1.0f, 0.0f)) * dr;
 	}
 	if (controls.roll_right) {
-		dr = glm::angleAxis(-amt, glm::vec3(0.0f, 1.0f, 0.0f));
+		dr = glm::angleAxis(-amt, glm::vec3(0.0f, 1.0f, 0.0f)) * dr;
 	}
 	if (controls.roll_up) {
-		dr = glm::angleAxis(amt, glm::vec3(1.0f, 0.0f, 0.0f));
+		dr = glm::angleAxis(amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
 	}
 	if (controls.roll_down) {
-		dr = glm::angleAxis(-amt, glm::vec3(1.0f, 0.0f, 0.0f));
+		dr = glm::angleAxis(-amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
 	}
 	if (dr != glm::quat()) {
-		for (auto &r : board_rotations) {
-			r = glm::normalize(dr * r);
+		glm::ivec2 cursori = glm::ivec2(std::round(cursor.x), std::round(cursor.y));
+		for (uint32_t y = 0; y < board_size.y; ++y) {
+			for (uint32_t x = 0; x < board_size.x; ++x) {
+				if (int32_t(x) == cursori.x || int32_t(y) == cursori.y) {
+					glm::quat &r = board_rotations[y * board_size.x + x];
+					r = glm::normalize(dr * r);
+				}
+			}
 		}
 	}
 }
@@ -297,9 +304,6 @@ void Game::draw(glm::uvec2 drawable_size) {
 			-(scale / aspect) * center.x, -scale * center.y, 0.0f, 1.0f
 		);
 	}
-
-	glClearColor(1.0, 0.0, 1.0, 0.0);
-	glClear(GL_COLOR_BUFFER_BIT);
 
 	//set up graphics pipeline to use data from the meshes and the simple shading program:
 	glBindVertexArray(meshes_for_simple_shading_vao);
@@ -338,7 +342,7 @@ void Game::draw(glm::uvec2 drawable_size) {
 					0.0f, 0.0f, 1.0f, 0.0f,
 					x+0.5f, y+0.5f, 0.0f, 1.0f
 				)
-				* glm::mat4_cast(board_rotations[y*board_size.y+x])
+				* glm::mat4_cast(board_rotations[y*board_size.x+x])
 			);
 		}
 	}

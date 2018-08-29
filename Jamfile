@@ -57,6 +57,7 @@ if $(OS) = NT { #Windows
 #Store the names of all the .cpp files to build into a variable:
 NAMES =
 	main
+	data_path
 	Game
 	;
 
