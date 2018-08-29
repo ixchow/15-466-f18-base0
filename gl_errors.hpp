@@ -2,6 +2,7 @@
 
 #include "GL.hpp"
 #include <iostream>
+#include <string>
 
 #define STR2(X) # X
 #define STR(X) STR2(X)

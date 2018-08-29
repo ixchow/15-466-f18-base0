@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <memory>
+#include <algorithm>
 
 int main(int argc, char **argv) {
 	struct {
@@ -72,10 +73,7 @@ int main(int argc, char **argv) {
 
 	#ifdef _WIN32
 	//On windows, load OpenGL extensions:
-	if (!init_gl_shims()) {
-		std::cerr << "ERROR: failed to initialize shims." << std::endl;
-		return 1;
-	}
+	init_gl_shims();
 	#endif
 
 	//Set VSYNC + Late Swap (prevents crazy FPS):

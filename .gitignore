@@ -2,3 +2,7 @@ objs/
 *.blend[0-9]
 dist/main
 dist/main.exe
+dist/SDL2.dll
+kit-libs-win
+kit-libs-linux
+kit-libs-osx
