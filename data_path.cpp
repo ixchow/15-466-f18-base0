@@ -57,7 +57,7 @@ static std::string get_data_path() {
 	ret = ret.substr(0, ret.rfind('/'));
 
 	//If running inside an .app bundle, point to the Resources directory:
-	if (ret.substr(ret.rfind(".app/Contents/MacOS")) == ".app/Contents/MacOS") {
+	if (ret.rfind(".app/Contents/MacOS") == ret.size() - std::string(".app/Contents/MacOS").size()) {
 		ret = ret.substr(0, ret.size() - 5) + "Resources";
 	}
 
