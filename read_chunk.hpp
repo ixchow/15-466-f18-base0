@@ -8,6 +8,7 @@
 template< typename T >
 void read_chunk(std::istream &from, std::string const &magic, std::vector< T > *_to) {
 	assert(_to);
+	assert(magic.length() == 4);
 	auto &to = *_to;
 
 	struct ChunkHeader {
