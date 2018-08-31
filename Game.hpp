@@ -59,18 +59,18 @@ struct Game {
     };
 
     Mesh background_mesh;
-    Mesh satellite_mesh;
-
+    Mesh sat_mesh;
 
     GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
     //------- game state -------
 
-    glm::uvec2 board_size = glm::uvec2(5,4);
-    std::vector< Mesh const * > board_meshes;
-    std::vector< glm::quat > board_rotations;
+    struct Transform {
+        glm::quat rotation = glm::quat(0.0f, 0.0f, .707f, .707f);
+        glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+    };
 
-    glm::uvec2 cursor = glm::vec2(0,0);
+    Transform sat_transform;
 
     struct {
         bool yaw_left = false;
