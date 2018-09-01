@@ -250,9 +250,11 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 
 void Game::update(float elapsed) {
     glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    float dx, dy;
+    float dx = 0.0f;
+    float dy = 0.0f;
     float ds = 0.1f;
     float amt = elapsed * 1.0f;
+    glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f);
     if (controls.yaw_left) {
         dr = glm::angleAxis(amt, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
     }
@@ -260,24 +262,25 @@ void Game::update(float elapsed) {
         dr = glm::angleAxis(-amt, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
     }
     if (controls.trans_left) {
-        dx = -ds;
+        dx += -ds;// * sin(sat_transform.rotation);
+        // dy = 
     }
     if (controls.trans_right) {
-        dx = ds;
+        dx += ds;
     }
     if (controls.trans_fwd) {
-        dy = ds;
+        dy += ds;
     }
     if (controls.trans_back) {
-        dy = -ds;
-        std::cout<<dy<<std::endl;
+        dy += -ds;
     }    
     if (dr != glm::quat()) {
         glm::quat &r = sat_transform.rotation;
         r = glm::normalize(dr * r);
+        glm::vec3 &v = sat_transform.lin_vel;
+        v += glm::vec3(dx, dy, 0.0f); 
         glm::vec3 &s = sat_transform.position;
-        s += glm::vec3(dx, dy, 0.0f); 
-        std::cout<<s.x<<std::endl;
+        s += v * elapsed; 
     }
 }
 
@@ -336,22 +339,22 @@ void Game::draw(glm::uvec2 drawable_size) {
 
     draw_mesh(sat_mesh,
         glm::mat4(
-            0.05f, 0.0f, 0.0f, sat_transform.position.x,
-            0.0f, 0.05f, 0.0f, sat_transform.position.y,
+            0.03f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.03f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f
+            sat_transform.position.x, sat_transform.position.y, 0.0f, 1.0f
         )
         * glm::mat4_cast(sat_transform.rotation)
     );
 
-    // draw_mesh(background_mesh,
-    //     glm::mat4(
-    //         1.0f, 0.0f, 0.0f, 0.0f,
-    //         0.0f, 1.0f, 0.0f, 0.0f,
-    //         0.0f, 0.0f, 1.0f, 0.0f,
-    //         0.0f, 0.0f, 0.0f, 1.0f
-    //     )
-    // );
+    draw_mesh(background_mesh,
+        glm::mat4(
+            .001f, 0.0f, 0.0f, 0.0f,
+            0.0f, .001f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        )
+    );
 
 
 
