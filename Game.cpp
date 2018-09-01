@@ -5,12 +5,16 @@
 #include "data_path.hpp" //helper to get paths relative to executable
 
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+
+#include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <cstddef>
 #include <random>
+
 
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
@@ -249,36 +253,50 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 }
 
 void Game::update(float elapsed) {
-    glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); 
     float dx = 0.0f;
     float dy = 0.0f;
-    float ds = 0.1f;
-    float amt = elapsed * 1.0f;
-    glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f);
+    float amt_lin = 0.01f; // translation unit
+    float amt_rot = elapsed * 1.0f; // rotation unit
+    float fuel_burned = 0.0f;
+    glm::vec4 dv = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // glm::mat4 sample_matrix = glm::mat4(
+    //         .707f, 0.0f, 0.0f, 0.0f,
+    //         0.0f, .707f, 0.0f, 0.0f,
+    //         0.0f, 0.0f, 0.1f, 0.0f,
+    //         0.0f, 0.0f, 0.0f, 1.0f
+    //     );
+    glm::quat sample_quat = glm::quat( std::sqrt(2.0f)/2.0f, -std::sqrt(2.0f)/2.0f, 0.0f, 0.0f);
+    glm::vec3 sample_euler = glm::eulerAngles(sample_quat);
+    // print out per https://stackoverflow.com/questions/11515469/ ...
+    //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
+    // std::cout<<glm::to_string(sample_euler)<<std::endl;
+
     if (controls.yaw_left) {
-        dr = glm::angleAxis(amt, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
+        dr = glm::angleAxis(amt_rot, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
     }
     if (controls.yaw_right) {
-        dr = glm::angleAxis(-amt, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
+        dr = glm::angleAxis(-amt_rot, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
     }
-    if (controls.trans_left) {
-        dx += -ds;// * sin(sat_transform.rotation);
-        // dy = 
+    if (controls.trans_left) { // all translations in satellite body frame
+        dv += glm::vec4(-amt_lin, 0.0f, 0.0f, 0.0f);
     }
     if (controls.trans_right) {
-        dx += ds;
+        dv += glm::vec4(amt_lin, 0.0f, 0.0f, 0.0f);
     }
     if (controls.trans_fwd) {
-        dy += ds;
+        dv += glm::vec4(0.0f, 0.0f, amt_lin, 0.0f);
     }
     if (controls.trans_back) {
-        dy += -ds;
+        dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
     }    
     if (dr != glm::quat()) {
         glm::quat &r = sat_transform.rotation;
         r = glm::normalize(dr * r);
+        dv = glm::mat4_cast(r) * dv;
         glm::vec3 &v = sat_transform.lin_vel;
-        v += glm::vec3(dx, dy, 0.0f); 
+        v += glm::vec3(dv); 
         glm::vec3 &s = sat_transform.position;
         s += v * elapsed; 
     }
@@ -347,14 +365,15 @@ void Game::draw(glm::uvec2 drawable_size) {
         * glm::mat4_cast(sat_transform.rotation)
     );
 
-    draw_mesh(background_mesh,
-        glm::mat4(
-            .001f, 0.0f, 0.0f, 0.0f,
-            0.0f, .001f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f
-        )
-    );
+    // draw_mesh(background_mesh,
+    //     glm::mat4(
+    //         1.0f, 0.0f, 0.0f, 0.0f,
+    //         0.0f, 1.0f, 0.0f, 0.0f,
+    //         0.0f, 0.0f, 0.1f, 0.0f,
+    //         0.0f, 0.0f, 0.0f, 1.0f
+    //     )
+    //     * glm::mat4_cast(glm::angleAxis(3.14f, glm::vec3(1.0f, 0.0f, 0.0f)))
+    // );
 
 
 
