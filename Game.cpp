@@ -323,20 +323,30 @@ void Game::update(float elapsed, uint32_t num_frames) {
         fuel -= thruster_count * fuel_burn_increment;
     }
 
-    void move_flying_object [&](Transform const &obj){
-        glm::quat &r = obj.transform.rotation;
-        glm::vec3 &s = obj.transform.position;
-        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // increment rotation as well
-        r = glm::normalize(r);
-        s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f);         
-    }
+    // void move_flying_object [&](Transform const &obj){
+    //     glm::quat &r = obj.transform.rotation;
+    //     glm::vec3 &s = obj.transform.position;
+    //     r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
+    //     r = glm::normalize(r);
+    //     s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f);         
+    // }
 
-    {
-        glm::quat &r = asteroid_transform.rotation;
-        glm::vec3 &s = asteroid_transform.position;
-        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // increment rotation as well
+    // {
+    //     glm::quat &r = asteroid_transform.rotation;
+    //     glm::vec3 &v = asteroid_transform.lin_vel;
+    //     glm::vec3 &s = asteroid_transform.position;
+    //     r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
+    //     r = glm::normalize(r);
+    //     s += glm::vec3(elapsed * v.x, -elapsed * v.y, 0.0f); 
+    // }
+
+    for (auto &asteroid: asteroids) {
+        glm::quat &r = asteroid.transform.rotation;
+        glm::vec3 &v = asteroid.transform.lin_vel;
+        glm::vec3 &s = asteroid.transform.position;
+        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
         r = glm::normalize(r);
-        s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f); 
+        s += glm::vec3(elapsed * v.x, elapsed * v.y, 0.0f); 
     }
     // std::cout<<compute_distance(sat.transform, asteroid_transform)<<std::endl;
 
@@ -364,13 +374,15 @@ void Game::update(float elapsed, uint32_t num_frames) {
     // std::cout<<to_string(sat.transform.position)<<std::endl;
     // std::cout<< num_frames<<std::endl;
 
+
+
     if (num_frames % asteroid_spawn_interval == 0){
         std::cout<<"new asteroid"<<std::endl;
         asteroids.emplace_back();
-        asteroids.back().transform = {glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-            glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
-            glm::vec3(0.3f, 0.3f, 0.0f), 
-            glm::vec3(0.0f)};
+        asteroids.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+                                        glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
+                                        glm::vec3(-0.6f, -0.5f, 0.0f), 
+                                        glm::vec3(0.02f, 0.02f, 0.0f)};
         asteroids.back().active = true;
         std::cout<<to_string(asteroids.back().transform.position)<<std::endl;
     }
@@ -449,16 +461,17 @@ void Game::draw(glm::uvec2 drawable_size) {
     //     * glm::mat4_cast(glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)))
     // );
 
-    draw_mesh(asteroid_mesh,
-        glm::mat4(
-            0.02f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.02f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.1f, 0.0f,
-            asteroid_transform.position.x, asteroid_transform.position.y, 0.0f, 1.0f
-        )
-        * glm::mat4_cast(asteroid_transform.rotation)
-
-    );
+    for (auto &asteroid: asteroids){
+        draw_mesh(asteroid_mesh,
+            glm::mat4(
+                0.02f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.02f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.1f, 0.0f,
+                asteroid.transform.position.x, asteroid.transform.position.y, 0.0f, 1.0f
+            )
+            * glm::mat4_cast(asteroid.transform.rotation)
+        );        
+    }
 
     glUseProgram(0);
 
