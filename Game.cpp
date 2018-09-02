@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <random>
 #include <chrono>
+#include <ctime>
 
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
@@ -203,27 +204,31 @@ Game::Game() {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
-    SDL_AudioSpec wav_spec;
+    // initialize audio
+    // based on https://www.youtube.com/watch?v=U3IsueoqG58
+    SDL_Init(SDL_INIT_AUDIO);
+
+    SDL_AudioSpec want, have;
+
+    SDL_memset(&want, 0, sizeof(want));
+    want.freq = 44100;
+    want.format = AUDIO_S16;
+    want.channels = 2;
+    want.samples = 4096;
+    auto audio = SDL_OpenAudioDevice(nullptr, false, &want, &have, 0);
+
     Uint32 wav_length;
     Uint8 *wav_buffer;
-
-    if (SDL_LoadWAV("sound.wav", &wav_spec, &wav_buffer, &wav_length) == NULL) {
-        fprintf(stderr, "Could not open sound.wav: %s\n", SDL_GetError());
-    } else {
-        /* Do stuff with the WAV data, and then... */
-        SDL_FreeWAV(wav_buffer);
-    }
-
+    SDL_LoadWAV("sound.wav", &have, &wav_buffer, &wav_length);
+    SDL_QueueAudio(audio, wav_buffer, wav_length);
+    SDL_PauseAudioDevice(audio, false);
 
     GL_ERRORS();
 
     //----------------
-    // std::mt19937 mt(0xbead1234);
 
-    srand(0);
-
-    // std::vector< Mesh const * > meshes{ &background_mesh, &sat_mesh };
-
+    // https://stackoverflow.com/questions/9246536/warning-c4244-argument-conversion-from-time-t-to-unsigned-int-possible
+    srand( (unsigned int) time(NULL)); // random seed
 }
 
 Game::~Game() {
@@ -290,11 +295,11 @@ void Game::update(float elapsed, uint32_t num_frames) {
         //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
 
         if (controls.yaw_left) {
-            dw += -amt_rot;
+            dw += amt_rot;
             thruster_count++;
         }
         if (controls.yaw_right) {
-            dw += amt_rot;
+            dw += -amt_rot;
             thruster_count++;
         }
         if (controls.trans_left) { // all 4 translations are in satellite body frame
@@ -306,43 +311,28 @@ void Game::update(float elapsed, uint32_t num_frames) {
             thruster_count++;
         }
         if (controls.trans_fwd) {
-            dv += glm::vec4(0.0f, 0.0f, amt_lin, 0.0f);
+            dv += glm::vec4(0.0f, amt_lin, 0.0f, 0.0f);
             thruster_count++;
         }
         if (controls.trans_back) {
-            dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
+            dv += glm::vec4(0.0f, -amt_lin, 0.0f, 0.0f);
             thruster_count++;
         }    
         glm::quat &r = sat.transform.rotation;
         glm::quat &w = sat.transform.ang_vel;
         glm::vec3 &s = sat.transform.position;
         glm::vec3 &v = sat.transform.lin_vel;
+        // glm::vec3 &g = gripper.transform.position;
         dv = glm::mat4_cast(r) * dv; // convert from body to world frame
-        w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
+        w *= glm::quat(glm::vec3(0.0f, 0.0f, dw)); // increment angular velocity
         w = glm::normalize(w);
         r *= w; // increment rotation as well
         r = glm::normalize(r);
         v += glm::vec3(dv); 
         s += v * elapsed; 
+        // std::cout<<to_string(g)<<std::endl;
         fuel -= thruster_count * fuel_burn_increment;
     }
-
-    // auto move_flying_object = [&](Transform const &obj){
-    //     glm::quat &r = obj.transform.rotation;
-    //     glm::vec3 &s = obj.transform.position;
-    //     r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
-    //     r = glm::normalize(r);
-    //     s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f);         
-    // }
-
-    // {
-    //     glm::quat &r = asteroid_transform.rotation;
-    //     glm::vec3 &v = asteroid_transform.lin_vel;
-    //     glm::vec3 &s = asteroid_transform.position;
-    //     r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
-    //     r = glm::normalize(r);
-    //     s += glm::vec3(elapsed * v.x, -elapsed * v.y, 0.0f); 
-    // }
 
     for (auto &asteroid: asteroids) {
         glm::quat &r = asteroid.transform.rotation;
@@ -361,10 +351,10 @@ void Game::update(float elapsed, uint32_t num_frames) {
         r = glm::normalize(r);
         s += glm::vec3(elapsed * v.x, elapsed * v.y, 0.0f); 
     }
-    // std::cout<<compute_distance(sat.transform, asteroid_transform)<<std::endl;
 
     {
         for (auto& asteroid: asteroids){
+
             if ((compute_distance(sat.transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
                 asteroid.active = false;
                 fuel += fuel_asteroid_increment;
@@ -377,9 +367,6 @@ void Game::update(float elapsed, uint32_t num_frames) {
             }
         }        
     }
-    // std::cout<<fuel<<std::endl;
-    // std::cout<<to_string(sat.transform.position)<<std::endl;
-    // std::cout<< num_frames<<std::endl;
 
     auto spawn_object = [&](std::vector<FlyingObject> &objs, int edge){
         objs.emplace_back();
@@ -436,79 +423,9 @@ void Game::update(float elapsed, uint32_t num_frames) {
     }
 
     if (num_frames % junk_spawn_interval == 0){
-        std::cout<<"new junk"<<std::endl;
         int edge = rand()/(RAND_MAX/4);
         spawn_object(junks, edge);
-        std::cout<<to_string(junks.back().transform.position)<<std::endl;
     }
-
-
-    // if (num_frames % asteroid_spawn_interval == 0){
-    //     // std::cout<<"new asteroid"<<std::endl;
-
-
-
-    //     asteroids.emplace_back();
-    //     // random number: https://stackoverflow.com/questions/686353/c-random-float-number-generation
-    //     float x_start;
-    //     float x_end;
-    //     float y_start;
-    //     float y_end;
-
-    //     auto random_in_range = [&](float max, float min){
-    //         return min + static_cast <float> (rand()) / ( static_cast <float> (RAND_MAX/(max-min)));
-    //     };
-
-    //     int edge = rand()/(RAND_MAX/4);
-    //     switch (edge){
-    //         case 0: // top edge
-    //             x_start = random_in_range(frame_max.x, frame_min.x);
-    //             x_end = random_in_range(frame_max.x, frame_min.x);
-    //             y_start = frame_max.y;
-    //             y_end = frame_min.y;
-    //             break;
-    //         case 1: // right edge
-    //             x_start = frame_max.x;
-    //             x_end = frame_min.x;      
-    //             y_start = random_in_range(frame_max.y, frame_min.y);
-    //             y_end = random_in_range(frame_max.y, frame_min.y);
-    //             break;
-    //         case 2: // bottom edge
-    //             x_start = random_in_range(frame_max.x, frame_min.x);
-    //             x_end = random_in_range(frame_max.x, frame_min.x);
-    //             y_start = frame_min.y;
-    //             y_end = frame_max.y;
-    //             break;
-    //         case 3: // left edge
-    //             x_start = frame_min.x;
-    //             x_end = frame_max.x;      
-    //             y_start = random_in_range(frame_max.y, frame_min.y);
-    //             y_end = random_in_range(frame_max.y, frame_min.y);
-    //             break;
-    //         default:
-    //             break;
-    //     }
-
-    //     float th = atan2(y_end - y_start, x_end - x_start);
-    //     asteroids.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-    //                                     glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
-    //                                     glm::vec3(x_start, y_start, 0.0f), 
-    //                                     glm::vec3(cos(th)*0.1f, sin(th)*0.1f, 0.0f)};
-    //     asteroids.back().active = true;
-    // }
-
-    // if (num_frames % junk_spawn_interval == 0){
-    //     // std::cout<<"new junk"<<std::endl;
-    //     junks.emplace_back();
-    //     // random number: https://stackoverflow.com/questions/686353/c-random-float-number-generation
-    //     float x = frame_min.x + static_cast <float> (rand()) /
-    //             ( static_cast <float> (RAND_MAX/(frame_max.x-(frame_min.x))));
-    //     junks.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-    //                                     glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
-    //                                     glm::vec3(x, -0.5f, 0.0f), 
-    //                                     glm::vec3(0.1f, 0.1f, 0.0f)};
-    //     junks.back().active = true;
-    // }
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
@@ -567,8 +484,8 @@ void Game::draw(glm::uvec2 drawable_size) {
     if (sat.active){
         draw_mesh(sat_mesh,
             glm::mat4(
-                0.03f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.03f, 0.0f, 0.0f,
+                0.2f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.2f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
                 sat.transform.position.x, sat.transform.position.y, 0.0f, 1.0f
             )
@@ -604,8 +521,8 @@ void Game::draw(glm::uvec2 drawable_size) {
     for (auto &junk: junks){
         draw_mesh(junk_mesh,
             glm::mat4(
-                0.04f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.04f, 0.0f, 0.0f,
+                0.03f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.03f, 0.0f, 0.0f,
                 0.0f, 0.0f, 0.1f, 0.0f,
                 junk.transform.position.x, junk.transform.position.y, 0.0f, 1.0f
             )

@@ -79,14 +79,16 @@ struct Game {
     float fuel_burn_increment = 0.001f;
     float fuel_asteroid_increment = 0.1f;
 
-    uint32_t asteroid_spawn_interval = 200;
-    uint32_t junk_spawn_interval = 100;
+    uint32_t asteroid_spawn_interval = 4000;
+    uint32_t junk_spawn_interval = 2000;
 
     float asteroid_capture_distance = 0.05f;
     float collision_min_distance = 0.02f;
 
     glm::vec2 frame_max = glm::vec2(0.85f, 0.5f);
     glm::vec2 frame_min = glm::vec2(-0.85f, -0.5f);
+
+    glm::vec3 gripper_offset = glm::vec3(0.0f, 0.1f, 0.0f);
 
     struct {
         bool yaw_left = false;
@@ -104,9 +106,16 @@ struct Game {
     };
 
     FlyingObject sat {
-        {   glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), // start pointing upwards
+        {   glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), // start pointing upwards
             glm::quat(1.0f, 0.0f, 0.0f, 0.0f), // not rotating
             glm::vec3(0.0f), // at the origin
+            glm::vec3(0.0f)}, // stationary
+        true};
+
+    FlyingObject gripper {
+        {   glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), // start pointing upwards
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f), // not rotating
+            gripper_offset, // offset
             glm::vec3(0.0f)}, // stationary
         true};
 
