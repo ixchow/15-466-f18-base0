@@ -24,7 +24,7 @@ struct Game {
     bool handle_event(SDL_Event const &evt, glm::uvec2 window_size);
 
     //update is called at the start of a new frame, after events are handled:
-    void update(float elapsed);
+    void update(float elapsed, uint32_t num_frames);
 
     //draw is called after update:
     void draw(glm::uvec2 drawable_size);
@@ -67,13 +67,6 @@ struct Game {
 
     //------- game state -------
 
-    // struct Transform {
-    //     glm::quat rotation = glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)); // start pointing upwards
-    //     glm::quat ang_vel = glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-    //     glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-    //     glm::vec3 lin_vel = glm::vec3(0.0f, 0.0f, 0.0f);
-    // };
-
     struct Transform {
         glm::quat rotation;
         glm::quat ang_vel;
@@ -81,24 +74,19 @@ struct Game {
         glm::vec3 lin_vel;
     };
 
-    Transform sat_transform{    glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-                                glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
-                                glm::vec3(0.0f), 
-                                glm::vec3(0.0f)};
-
     Transform asteroid_transform{   glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
                                     glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-                                    glm::vec3(0.0f), 
+                                    glm::vec3(0.3f, 0.3f, 0.0f), 
                                     glm::vec3(0.0f)};
 
     float fuel = 1.0f; // starts full
-    float fuel_burn_increment = 1e-3f;
-    float fuel_asteroid_increment = 1e-2f;
+    float fuel_burn_increment = 0.001f;
+    float fuel_asteroid_increment = 0.1f;
 
-    float asteroid_spawn_interval = 10.0f; // sec
-    float junk_spawn_interval = 5.0f; // sec
+    uint32_t asteroid_spawn_interval = 100;
+    uint32_t junk_spawn_interval = 250;
 
-    float asteroid_capture_distance = 0.02f;
+    float asteroid_capture_distance = 0.1f;
     float collision_min_distance = 0.02f;
 
     struct {
@@ -113,13 +101,18 @@ struct Game {
 
     struct FlyingObject {
         Transform transform;
-        bool active = true;
+        bool active;
     };
 
-    FlyingObject sat;
-
+    FlyingObject sat {
+        {   glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
+            glm::vec3(0.0f), 
+            glm::vec3(0.0f)}, 
+        true};
 
     std::vector<FlyingObject> asteroids;
+    std::vector<FlyingObject> junks;
 
 
 };

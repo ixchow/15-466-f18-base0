@@ -5,8 +5,8 @@
 #include "data_path.hpp" //helper to get paths relative to executable
 
 #include <glm/gtc/type_ptr.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
@@ -268,7 +268,7 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
     return false;
 }
 
-void Game::update(float elapsed) {
+void Game::update(float elapsed, uint32_t num_frames) {
 
     auto compute_distance = [&](Transform const &obj1, Transform const &obj2) {
         return glm::distance(obj1.position, obj2.position);
@@ -309,10 +309,10 @@ void Game::update(float elapsed) {
             dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
             thruster_count++;
         }    
-        glm::quat &r = sat_transform.rotation;
-        glm::quat &w = sat_transform.ang_vel;
-        glm::vec3 &s = sat_transform.position;
-        glm::vec3 &v = sat_transform.lin_vel;
+        glm::quat &r = sat.transform.rotation;
+        glm::quat &w = sat.transform.ang_vel;
+        glm::vec3 &s = sat.transform.position;
+        glm::vec3 &v = sat.transform.lin_vel;
         dv = glm::mat4_cast(r) * dv; // convert from body to world frame
         w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
         w = glm::normalize(w);
@@ -323,6 +323,14 @@ void Game::update(float elapsed) {
         fuel -= thruster_count * fuel_burn_increment;
     }
 
+    void move_flying_object [&](Transform const &obj){
+        glm::quat &r = obj.transform.rotation;
+        glm::vec3 &s = obj.transform.position;
+        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // increment rotation as well
+        r = glm::normalize(r);
+        s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f);         
+    }
+
     {
         glm::quat &r = asteroid_transform.rotation;
         glm::vec3 &s = asteroid_transform.position;
@@ -330,29 +338,42 @@ void Game::update(float elapsed) {
         r = glm::normalize(r);
         s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f); 
     }
-    // std::cout<<compute_distance(sat_transform, asteroid_transform)<<std::endl;
+    // std::cout<<compute_distance(sat.transform, asteroid_transform)<<std::endl;
 
     {
         // for (auto& asteroid: asteroids){
-            if ((compute_distance(sat_transform, asteroid_transform))<=asteroid_capture_distance && controls.grab){
+            if ((compute_distance(sat.transform, asteroid_transform))<=asteroid_capture_distance && controls.grab){
                 // asteroid.active = false;
                 fuel += fuel_asteroid_increment;
             }
         // }
         // for (auto& asteroid: asteroids){
-        //     if ((compute_distance(sat_transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
+        //     if ((compute_distance(sat.transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
         //         asteroid.active = false;
         //         fuel += fuel_asteroid_increment;
         //     }
         // }
 
         // for (auto& junk: junks){
-        //     if ((compute_distance(sat_transform, junk.transform))<=collision_min_distance){
+        //     if ((compute_distance(sat.transform, junk.transform))<=collision_min_distance){
         //         sat.active = false;
         //     }
         // }        
     }
-    std::cout<<fuel<<std::endl;
+    // std::cout<<fuel<<std::endl;
+    // std::cout<<to_string(sat.transform.position)<<std::endl;
+    // std::cout<< num_frames<<std::endl;
+
+    if (num_frames % asteroid_spawn_interval == 0){
+        std::cout<<"new asteroid"<<std::endl;
+        asteroids.emplace_back();
+        asteroids.back().transform = {glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
+            glm::vec3(0.3f, 0.3f, 0.0f), 
+            glm::vec3(0.0f)};
+        asteroids.back().active = true;
+        std::cout<<to_string(asteroids.back().transform.position)<<std::endl;
+    }
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
@@ -413,9 +434,9 @@ void Game::draw(glm::uvec2 drawable_size) {
             0.03f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.03f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            sat_transform.position.x, sat_transform.position.y, 0.0f, 1.0f
+            sat.transform.position.x, sat.transform.position.y, 0.0f, 1.0f
         )
-        * glm::mat4_cast(sat_transform.rotation)
+        * glm::mat4_cast(sat.transform.rotation)
     );
 
     // draw_mesh(background_mesh,
