@@ -260,7 +260,10 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
         } else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
             controls.trans_back = (evt.type == SDL_KEYDOWN);
             return true;
-        }       
+        } else if (evt.key.keysym.scancode == SDL_SCANCODE_SPACE) {
+            controls.grab = (evt.type == SDL_KEYDOWN);
+            return true;
+        }            
     }   
     return false;
 }
@@ -270,6 +273,8 @@ void Game::update(float elapsed) {
     auto compute_distance = [&](Transform const &obj1, Transform const &obj2) {
         return glm::distance(obj1.position, obj2.position);
     };
+
+    // std::cout<<current_time<<std::endl;
 
     {
         float amt_lin = elapsed * 0.2f; // translation unit
@@ -315,27 +320,39 @@ void Game::update(float elapsed) {
         r = glm::normalize(r);
         v += glm::vec3(dv); 
         s += v * elapsed; 
-        fuel -= thruster_count * fuel_increment;
-        // std::cout<<fuel<<std::endl;
-        // sample use of mt19937 from https://www.guyrutenberg.com/2014/05/03/c-mt19937-example/
-        // auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-        // std::cout<<seed<<std::endl;
-
-        // uint32_t wander_angle = rand()%360;
-        // std::cout<<wander_angle<<std::endl;
-        // std::mt19937 mt_rand(seed);
-        // std::cout<<mt_rand(seed)<<std::endl;
+        fuel -= thruster_count * fuel_burn_increment;
     }
 
     {
         glm::quat &r = asteroid_transform.rotation;
         glm::vec3 &s = asteroid_transform.position;
-        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 0.0f, 0.0f)); // increment rotation as well
+        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // increment rotation as well
         r = glm::normalize(r);
         s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f); 
     }
-    std::cout<<compute_distance(sat_transform, asteroid_transform)<<std::endl;
+    // std::cout<<compute_distance(sat_transform, asteroid_transform)<<std::endl;
 
+    {
+        // for (auto& asteroid: asteroids){
+            if ((compute_distance(sat_transform, asteroid_transform))<=asteroid_capture_distance && controls.grab){
+                // asteroid.active = false;
+                fuel += fuel_asteroid_increment;
+            }
+        // }
+        // for (auto& asteroid: asteroids){
+        //     if ((compute_distance(sat_transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
+        //         asteroid.active = false;
+        //         fuel += fuel_asteroid_increment;
+        //     }
+        // }
+
+        // for (auto& junk: junks){
+        //     if ((compute_distance(sat_transform, junk.transform))<=collision_min_distance){
+        //         sat.active = false;
+        //     }
+        // }        
+    }
+    std::cout<<fuel<<std::endl;
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
@@ -403,12 +420,12 @@ void Game::draw(glm::uvec2 drawable_size) {
 
     // draw_mesh(background_mesh,
     //     glm::mat4(
-    //         1.0f, 0.0f, 0.0f, 0.0f,
-    //         0.0f, 1.0f, 0.0f, 0.0f,
+    //         0.3f, 0.0f, 0.0f, 0.0f,
+    //         0.0f, 0.3f, 0.0f, 0.0f,
     //         0.0f, 0.0f, 0.1f, 0.0f,
     //         0.0f, 0.0f, 0.0f, 1.0f
     //     )
-    //     * glm::mat4_cast(glm::angleAxis(3.14f, glm::vec3(1.0f, 0.0f, 0.0f)))
+    //     * glm::mat4_cast(glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)))
     // );
 
     draw_mesh(asteroid_mesh,

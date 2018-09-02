@@ -9,8 +9,6 @@
 
 #include <vector>
 
-// #define M_PI 3.141592653589793238462643
-
 // The 'Game' struct holds all of the game-relevant state,
 // and is called by the main loop.
 
@@ -69,17 +67,39 @@ struct Game {
 
     //------- game state -------
 
+    // struct Transform {
+    //     glm::quat rotation = glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)); // start pointing upwards
+    //     glm::quat ang_vel = glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+    //     glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+    //     glm::vec3 lin_vel = glm::vec3(0.0f, 0.0f, 0.0f);
+    // };
+
     struct Transform {
-        glm::quat rotation = glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)); // start pointing upwards
-        glm::quat ang_vel = glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 lin_vel = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::quat rotation;
+        glm::quat ang_vel;
+        glm::vec3 position;
+        glm::vec3 lin_vel;
     };
 
-    Transform sat_transform;
-    Transform asteroid_transform;
+    Transform sat_transform{    glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+                                glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
+                                glm::vec3(0.0f), 
+                                glm::vec3(0.0f)};
+
+    Transform asteroid_transform{   glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+                                    glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+                                    glm::vec3(0.0f), 
+                                    glm::vec3(0.0f)};
+
     float fuel = 1.0f; // starts full
-    float fuel_increment = 1e-4f;
+    float fuel_burn_increment = 1e-3f;
+    float fuel_asteroid_increment = 1e-2f;
+
+    float asteroid_spawn_interval = 10.0f; // sec
+    float junk_spawn_interval = 5.0f; // sec
+
+    float asteroid_capture_distance = 0.02f;
+    float collision_min_distance = 0.02f;
 
     struct {
         bool yaw_left = false;
@@ -88,6 +108,18 @@ struct Game {
         bool trans_right = false;
         bool trans_fwd = false;
         bool trans_back = false;
+        bool grab = false;
     } controls;
+
+    struct FlyingObject {
+        Transform transform;
+        bool active = true;
+    };
+
+    FlyingObject sat;
+
+
+    std::vector<FlyingObject> asteroids;
+
 
 };
