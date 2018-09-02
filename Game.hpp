@@ -3,6 +3,7 @@
 #include "GL.hpp"
 
 #include <SDL.h>
+#include <SDL_audio.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -62,6 +63,7 @@ struct Game {
 
     Mesh background_mesh;
     Mesh sat_mesh;
+    Mesh asteroid_mesh;
 
     GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
@@ -75,6 +77,7 @@ struct Game {
     };
 
     Transform sat_transform;
+    Transform asteroid_transform;
     float fuel = 1.0f; // starts full
     float fuel_increment = 1e-4f;
 

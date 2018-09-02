@@ -14,7 +14,7 @@
 #include <map>
 #include <cstddef>
 #include <random>
-
+// #include <chrono>
 
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
@@ -180,6 +180,7 @@ Game::Game() {
 
         background_mesh = lookup("Background");
         sat_mesh = lookup("Satellite");
+        asteroid_mesh = lookup("Asteroid");
     }
 
     { //create vertex array object to hold the map from the mesh vertex buffer to shader program attributes:
@@ -200,10 +201,22 @@ Game::Game() {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
+    SDL_AudioSpec wav_spec;
+    Uint32 wav_length;
+    Uint8 *wav_buffer;
+
+    if (SDL_LoadWAV("sound.wav", &wav_spec, &wav_buffer, &wav_length) == NULL) {
+        fprintf(stderr, "Could not open sound.wav: %s\n", SDL_GetError());
+    } else {
+        /* Do stuff with the WAV data, and then... */
+        SDL_FreeWAV(wav_buffer);
+    }
+
+
     GL_ERRORS();
 
     //----------------
-    std::mt19937 mt(0xbead1234);
+    // std::mt19937 mt(0xbead1234);
 
     // std::vector< Mesh const * > meshes{ &background_mesh, &sat_mesh };
 
@@ -253,51 +266,76 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 }
 
 void Game::update(float elapsed) {
-    float amt_lin = elapsed * 0.2f; // translation unit
-    float amt_rot = elapsed * 0.05f; // rotation unit
-    glm::vec4 dv = glm::vec4(0.0f); // linear velocity increment
-    float dw = 0.0f; // angular velocity increment
-    int thruster_count = 0;
-    // print out per https://stackoverflow.com/questions/11515469/ ...
-    //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
 
-    if (controls.yaw_left) {
-        dw += -amt_rot;
-        thruster_count++;
+    auto compute_distance = [&](Transform const &obj1, Transform const &obj2) {
+        return glm::distance(obj1.position, obj2.position);
+    };
+
+    {
+        float amt_lin = elapsed * 0.2f; // translation unit
+        float amt_rot = elapsed * 0.05f; // rotation unit
+        glm::vec4 dv = glm::vec4(0.0f); // linear velocity increment
+        float dw = 0.0f; // angular velocity increment
+        int thruster_count = 0;
+        // print out per https://stackoverflow.com/questions/11515469/ ...
+        //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
+
+        if (controls.yaw_left) {
+            dw += -amt_rot;
+            thruster_count++;
+        }
+        if (controls.yaw_right) {
+            dw += amt_rot;
+            thruster_count++;
+        }
+        if (controls.trans_left) { // all 4 translations are in satellite body frame
+            dv += glm::vec4(-amt_lin, 0.0f, 0.0f, 0.0f);
+            thruster_count++;
+        }
+        if (controls.trans_right) {
+            dv += glm::vec4(amt_lin, 0.0f, 0.0f, 0.0f);
+            thruster_count++;
+        }
+        if (controls.trans_fwd) {
+            dv += glm::vec4(0.0f, 0.0f, amt_lin, 0.0f);
+            thruster_count++;
+        }
+        if (controls.trans_back) {
+            dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
+            thruster_count++;
+        }    
+        glm::quat &r = sat_transform.rotation;
+        glm::quat &w = sat_transform.ang_vel;
+        glm::vec3 &s = sat_transform.position;
+        glm::vec3 &v = sat_transform.lin_vel;
+        dv = glm::mat4_cast(r) * dv; // convert from body to world frame
+        w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
+        w = glm::normalize(w);
+        r *= w; // increment rotation as well
+        r = glm::normalize(r);
+        v += glm::vec3(dv); 
+        s += v * elapsed; 
+        fuel -= thruster_count * fuel_increment;
+        // std::cout<<fuel<<std::endl;
+        // sample use of mt19937 from https://www.guyrutenberg.com/2014/05/03/c-mt19937-example/
+        // auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+        // std::cout<<seed<<std::endl;
+
+        // uint32_t wander_angle = rand()%360;
+        // std::cout<<wander_angle<<std::endl;
+        // std::mt19937 mt_rand(seed);
+        // std::cout<<mt_rand(seed)<<std::endl;
     }
-    if (controls.yaw_right) {
-        dw += amt_rot;
-        thruster_count++;
+
+    {
+        glm::quat &r = asteroid_transform.rotation;
+        glm::vec3 &s = asteroid_transform.position;
+        r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 0.0f, 0.0f)); // increment rotation as well
+        r = glm::normalize(r);
+        s += glm::vec3(elapsed * 0.02f, -elapsed * 0.02f, 0.0f); 
     }
-    if (controls.trans_left) { // all 4 translations are in satellite body frame
-        dv += glm::vec4(-amt_lin, 0.0f, 0.0f, 0.0f);
-        thruster_count++;
-    }
-    if (controls.trans_right) {
-        dv += glm::vec4(amt_lin, 0.0f, 0.0f, 0.0f);
-        thruster_count++;
-    }
-    if (controls.trans_fwd) {
-        dv += glm::vec4(0.0f, 0.0f, amt_lin, 0.0f);
-        thruster_count++;
-    }
-    if (controls.trans_back) {
-        dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
-        thruster_count++;
-    }    
-    glm::quat &r = sat_transform.rotation;
-    glm::quat &w = sat_transform.ang_vel;
-    glm::vec3 &s = sat_transform.position;
-    glm::vec3 &v = sat_transform.lin_vel;
-    dv = glm::mat4_cast(r) * dv; // convert from body to world frame
-    w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
-    w = glm::normalize(w);
-    r *= w; // increment rotation as well
-    r = glm::normalize(r);
-    v += glm::vec3(dv); 
-    s += v * elapsed; 
-    fuel -= thruster_count * fuel_increment;
-    std::cout<<fuel<<std::endl;
+    std::cout<<compute_distance(sat_transform, asteroid_transform)<<std::endl;
+
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
@@ -373,14 +411,21 @@ void Game::draw(glm::uvec2 drawable_size) {
     //     * glm::mat4_cast(glm::angleAxis(3.14f, glm::vec3(1.0f, 0.0f, 0.0f)))
     // );
 
+    draw_mesh(asteroid_mesh,
+        glm::mat4(
+            0.02f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.02f, 0.0f, 0.0f,
+            0.0f, 0.0f, 0.1f, 0.0f,
+            asteroid_transform.position.x, asteroid_transform.position.y, 0.0f, 1.0f
+        )
+        * glm::mat4_cast(asteroid_transform.rotation)
 
+    );
 
     glUseProgram(0);
 
     GL_ERRORS();
 }
-
-
 
 //create and return an OpenGL vertex shader from source:
 static GLuint compile_shader(GLenum type, std::string const &source) {
