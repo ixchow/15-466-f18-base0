@@ -62,6 +62,7 @@ struct Game {
     Mesh background_mesh;
     Mesh sat_mesh;
     Mesh asteroid_mesh;
+    Mesh junk_mesh;
 
     GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
@@ -74,17 +75,12 @@ struct Game {
         glm::vec3 lin_vel;
     };
 
-    // Transform asteroid_transform{   glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-    //                                 glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
-    //                                 glm::vec3(0.3f, 0.3f, 0.0f), 
-    //                                 glm::vec3(0.0f)};
-
     float fuel = 1.0f; // starts full
     float fuel_burn_increment = 0.001f;
     float fuel_asteroid_increment = 0.1f;
 
     uint32_t asteroid_spawn_interval = 200;
-    uint32_t junk_spawn_interval = 250;
+    uint32_t junk_spawn_interval = 100;
 
     float asteroid_capture_distance = 0.05f;
     float collision_min_distance = 0.02f;

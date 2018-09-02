@@ -181,7 +181,7 @@ Game::Game() {
         background_mesh = lookup("Background");
         sat_mesh = lookup("Satellite");
         asteroid_mesh = lookup("Asteroid");
-        // junk_mesh = lookup("Junk");
+        junk_mesh = lookup("Junk");
 
     }
 
@@ -327,7 +327,7 @@ void Game::update(float elapsed, uint32_t num_frames) {
         fuel -= thruster_count * fuel_burn_increment;
     }
 
-    // void move_flying_object [&](Transform const &obj){
+    // auto move_flying_object = [&](Transform const &obj){
     //     glm::quat &r = obj.transform.rotation;
     //     glm::vec3 &s = obj.transform.position;
     //     r *= glm::angleAxis(elapsed, glm::vec3(1.0f, 1.0f, 1.0f)); // tumbling motion
@@ -352,6 +352,15 @@ void Game::update(float elapsed, uint32_t num_frames) {
         r = glm::normalize(r);
         s += glm::vec3(elapsed * v.x, elapsed * v.y, 0.0f); 
     }
+
+    for (auto &junk: junks) {
+        glm::quat &r = junk.transform.rotation;
+        glm::vec3 &v = junk.transform.lin_vel;
+        glm::vec3 &s = junk.transform.position;
+        r *= glm::angleAxis(elapsed, glm::vec3(-1.0f, 1.0f, -1.0f)); // tumbling motion
+        r = glm::normalize(r);
+        s += glm::vec3(elapsed * v.x, elapsed * v.y, 0.0f); 
+    }
     // std::cout<<compute_distance(sat.transform, asteroid_transform)<<std::endl;
 
     {
@@ -361,29 +370,20 @@ void Game::update(float elapsed, uint32_t num_frames) {
                 fuel += fuel_asteroid_increment;
             }
         }
-        // for (auto& asteroid: asteroids){
-        //     if ((compute_distance(sat.transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
-        //         asteroid.active = false;
-        //         fuel += fuel_asteroid_increment;
-        //     }
-        // }
 
-        // for (auto& junk: junks){
-        //     if ((compute_distance(sat.transform, junk.transform))<=collision_min_distance){
-        //         sat.active = false;
-        //     }
-        // }        
+        for (auto& junk: junks){
+            if ((compute_distance(sat.transform, junk.transform))<=collision_min_distance){
+                sat.active = false;
+            }
+        }        
     }
     // std::cout<<fuel<<std::endl;
     // std::cout<<to_string(sat.transform.position)<<std::endl;
     // std::cout<< num_frames<<std::endl;
 
+    auto spawn_object = [&](std::vector<FlyingObject> &objs, int edge){
+        objs.emplace_back();
 
-
-    if (num_frames % asteroid_spawn_interval == 0){
-        // std::cout<<"new asteroid"<<std::endl;
-        asteroids.emplace_back();
-        // random number: https://stackoverflow.com/questions/686353/c-random-float-number-generation
         float x_start;
         float x_end;
         float y_start;
@@ -393,7 +393,6 @@ void Game::update(float elapsed, uint32_t num_frames) {
             return min + static_cast <float> (rand()) / ( static_cast <float> (RAND_MAX/(max-min)));
         };
 
-        int edge = rand()/(RAND_MAX/4);
         switch (edge){
             case 0: // top edge
                 x_start = random_in_range(frame_max.x, frame_min.x);
@@ -424,15 +423,82 @@ void Game::update(float elapsed, uint32_t num_frames) {
         }
 
         float th = atan2(y_end - y_start, x_end - x_start);
-        asteroids.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+        objs.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
                                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
                                         glm::vec3(x_start, y_start, 0.0f), 
                                         glm::vec3(cos(th)*0.1f, sin(th)*0.1f, 0.0f)};
-        asteroids.back().active = true;
+        objs.back().active = true;
+    };
+
+    if (num_frames % asteroid_spawn_interval == 0){
+        int edge = rand()/(RAND_MAX/4);
+        spawn_object(asteroids, edge);
     }
 
+    if (num_frames % junk_spawn_interval == 0){
+        std::cout<<"new junk"<<std::endl;
+        int edge = rand()/(RAND_MAX/4);
+        spawn_object(junks, edge);
+        std::cout<<to_string(junks.back().transform.position)<<std::endl;
+    }
+
+
+    // if (num_frames % asteroid_spawn_interval == 0){
+    //     // std::cout<<"new asteroid"<<std::endl;
+
+
+
+    //     asteroids.emplace_back();
+    //     // random number: https://stackoverflow.com/questions/686353/c-random-float-number-generation
+    //     float x_start;
+    //     float x_end;
+    //     float y_start;
+    //     float y_end;
+
+    //     auto random_in_range = [&](float max, float min){
+    //         return min + static_cast <float> (rand()) / ( static_cast <float> (RAND_MAX/(max-min)));
+    //     };
+
+    //     int edge = rand()/(RAND_MAX/4);
+    //     switch (edge){
+    //         case 0: // top edge
+    //             x_start = random_in_range(frame_max.x, frame_min.x);
+    //             x_end = random_in_range(frame_max.x, frame_min.x);
+    //             y_start = frame_max.y;
+    //             y_end = frame_min.y;
+    //             break;
+    //         case 1: // right edge
+    //             x_start = frame_max.x;
+    //             x_end = frame_min.x;      
+    //             y_start = random_in_range(frame_max.y, frame_min.y);
+    //             y_end = random_in_range(frame_max.y, frame_min.y);
+    //             break;
+    //         case 2: // bottom edge
+    //             x_start = random_in_range(frame_max.x, frame_min.x);
+    //             x_end = random_in_range(frame_max.x, frame_min.x);
+    //             y_start = frame_min.y;
+    //             y_end = frame_max.y;
+    //             break;
+    //         case 3: // left edge
+    //             x_start = frame_min.x;
+    //             x_end = frame_max.x;      
+    //             y_start = random_in_range(frame_max.y, frame_min.y);
+    //             y_end = random_in_range(frame_max.y, frame_min.y);
+    //             break;
+    //         default:
+    //             break;
+    //     }
+
+    //     float th = atan2(y_end - y_start, x_end - x_start);
+    //     asteroids.back().transform = {  glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), 
+    //                                     glm::quat(1.0f, 0.0f, 0.0f, 0.0f), 
+    //                                     glm::vec3(x_start, y_start, 0.0f), 
+    //                                     glm::vec3(cos(th)*0.1f, sin(th)*0.1f, 0.0f)};
+    //     asteroids.back().active = true;
+    // }
+
     // if (num_frames % junk_spawn_interval == 0){
-    //     std::cout<<"new junk"<<std::endl;
+    //     // std::cout<<"new junk"<<std::endl;
     //     junks.emplace_back();
     //     // random number: https://stackoverflow.com/questions/686353/c-random-float-number-generation
     //     float x = frame_min.x + static_cast <float> (rand()) /
@@ -498,15 +564,18 @@ void Game::draw(glm::uvec2 drawable_size) {
         glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
     };
 
-    draw_mesh(sat_mesh,
-        glm::mat4(
-            0.03f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.03f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            sat.transform.position.x, sat.transform.position.y, 0.0f, 1.0f
-        )
-        * glm::mat4_cast(sat.transform.rotation)
-    );
+    if (sat.active){
+        draw_mesh(sat_mesh,
+            glm::mat4(
+                0.03f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.03f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                sat.transform.position.x, sat.transform.position.y, 0.0f, 1.0f
+            )
+            * glm::mat4_cast(sat.transform.rotation)
+        );
+    }
+
 
     // draw_mesh(background_mesh,
     //     glm::mat4(
@@ -532,17 +601,17 @@ void Game::draw(glm::uvec2 drawable_size) {
         }
     }
 
-    // for (auto &junk: junks){
-    //     draw_mesh(junk_mesh,
-    //         glm::mat4(
-    //             0.02f, 0.0f, 0.0f, 0.0f,
-    //             0.0f, 0.02f, 0.0f, 0.0f,
-    //             0.0f, 0.0f, 0.1f, 0.0f,
-    //             junk.transform.position.x, junk.transform.position.y, 0.0f, 1.0f
-    //         )
-    //         * glm::mat4_cast(junk.transform.rotation)
-    //     );        
-    // }
+    for (auto &junk: junks){
+        draw_mesh(junk_mesh,
+            glm::mat4(
+                0.04f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.04f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.1f, 0.0f,
+                junk.transform.position.x, junk.transform.position.y, 0.0f, 1.0f
+            )
+            * glm::mat4_cast(junk.transform.rotation)
+        );        
+    }
 
     glUseProgram(0);
 
