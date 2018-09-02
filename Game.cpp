@@ -253,44 +253,51 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 }
 
 void Game::update(float elapsed) {
-    glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); 
     float amt_lin = elapsed * 0.2f; // translation unit
     float amt_rot = elapsed * 0.05f; // rotation unit
-    float fuel_burned = 0.0f;
-    glm::vec4 dv = glm::vec4(0.0f);
-    float dw = 0.0f;
-
+    glm::vec4 dv = glm::vec4(0.0f); // linear velocity increment
+    float dw = 0.0f; // angular velocity increment
+    int thruster_count = 0;
     // print out per https://stackoverflow.com/questions/11515469/ ...
     //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
 
     if (controls.yaw_left) {
         dw += -amt_rot;
+        thruster_count++;
     }
     if (controls.yaw_right) {
         dw += amt_rot;
+        thruster_count++;
     }
     if (controls.trans_left) { // all 4 translations are in satellite body frame
         dv += glm::vec4(-amt_lin, 0.0f, 0.0f, 0.0f);
+        thruster_count++;
     }
     if (controls.trans_right) {
         dv += glm::vec4(amt_lin, 0.0f, 0.0f, 0.0f);
+        thruster_count++;
     }
     if (controls.trans_fwd) {
         dv += glm::vec4(0.0f, 0.0f, amt_lin, 0.0f);
+        thruster_count++;
     }
     if (controls.trans_back) {
         dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
+        thruster_count++;
     }    
     glm::quat &r = sat_transform.rotation;
-    r = glm::normalize(dr * r);
-    dv = glm::mat4_cast(r) * dv; // convert from body to world frame
     glm::quat &w = sat_transform.ang_vel;
-    w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
-    r *= w;
-    glm::vec3 &v = sat_transform.lin_vel;
-    v += glm::vec3(dv); 
     glm::vec3 &s = sat_transform.position;
+    glm::vec3 &v = sat_transform.lin_vel;
+    dv = glm::mat4_cast(r) * dv; // convert from body to world frame
+    w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
+    w = glm::normalize(w);
+    r *= w; // increment rotation as well
+    r = glm::normalize(r);
+    v += glm::vec3(dv); 
     s += v * elapsed; 
+    fuel -= thruster_count * fuel_increment;
+    std::cout<<fuel<<std::endl;
 }
 
 void Game::draw(glm::uvec2 drawable_size) {

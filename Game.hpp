@@ -75,6 +75,8 @@ struct Game {
     };
 
     Transform sat_transform;
+    float fuel = 1.0f; // starts full
+    float fuel_increment = 1e-4f;
 
     struct {
         bool yaw_left = false;
