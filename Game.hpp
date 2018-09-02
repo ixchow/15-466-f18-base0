@@ -8,6 +8,8 @@
 
 #include <vector>
 
+// #define M_PI 3.141592653589793238462643
+
 // The 'Game' struct holds all of the game-relevant state,
 // and is called by the main loop.
 
@@ -66,7 +68,8 @@ struct Game {
     //------- game state -------
 
     struct Transform {
-        glm::quat rotation = glm::quat(0.0f, 0.0f, .707f, .707f);
+        glm::quat rotation = glm::angleAxis(-float(M_PI)/2.0f, glm::vec3(1.0f, 0.0f, 0.0f)); // start pointing upwards
+        glm::quat ang_vel = glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f));
         glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 lin_vel = glm::vec3(0.0f, 0.0f, 0.0f);
     };

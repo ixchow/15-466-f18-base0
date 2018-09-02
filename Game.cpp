@@ -254,32 +254,22 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 
 void Game::update(float elapsed) {
     glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); 
-    float dx = 0.0f;
-    float dy = 0.0f;
-    float amt_lin = 0.01f; // translation unit
-    float amt_rot = elapsed * 1.0f; // rotation unit
+    float amt_lin = elapsed * 0.2f; // translation unit
+    float amt_rot = elapsed * 0.05f; // rotation unit
     float fuel_burned = 0.0f;
-    glm::vec4 dv = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    glm::vec4 dv = glm::vec4(0.0f);
+    float dw = 0.0f;
 
-    // glm::mat4 sample_matrix = glm::mat4(
-    //         .707f, 0.0f, 0.0f, 0.0f,
-    //         0.0f, .707f, 0.0f, 0.0f,
-    //         0.0f, 0.0f, 0.1f, 0.0f,
-    //         0.0f, 0.0f, 0.0f, 1.0f
-    //     );
-    glm::quat sample_quat = glm::quat( std::sqrt(2.0f)/2.0f, -std::sqrt(2.0f)/2.0f, 0.0f, 0.0f);
-    glm::vec3 sample_euler = glm::eulerAngles(sample_quat);
     // print out per https://stackoverflow.com/questions/11515469/ ...
     //      how-do-i-print-vector-values-of-type-glmvec3-that-have-been-passed-by-referenc
-    // std::cout<<glm::to_string(sample_euler)<<std::endl;
 
     if (controls.yaw_left) {
-        dr = glm::angleAxis(amt_rot, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
+        dw += -amt_rot;
     }
     if (controls.yaw_right) {
-        dr = glm::angleAxis(-amt_rot, glm::vec3(0.0f, 0.0f, 1.0f)) * dr;
+        dw += amt_rot;
     }
-    if (controls.trans_left) { // all translations in satellite body frame
+    if (controls.trans_left) { // all 4 translations are in satellite body frame
         dv += glm::vec4(-amt_lin, 0.0f, 0.0f, 0.0f);
     }
     if (controls.trans_right) {
@@ -291,15 +281,16 @@ void Game::update(float elapsed) {
     if (controls.trans_back) {
         dv += glm::vec4(0.0f, 0.0f, -amt_lin, 0.0f);
     }    
-    if (dr != glm::quat()) {
-        glm::quat &r = sat_transform.rotation;
-        r = glm::normalize(dr * r);
-        dv = glm::mat4_cast(r) * dv;
-        glm::vec3 &v = sat_transform.lin_vel;
-        v += glm::vec3(dv); 
-        glm::vec3 &s = sat_transform.position;
-        s += v * elapsed; 
-    }
+    glm::quat &r = sat_transform.rotation;
+    r = glm::normalize(dr * r);
+    dv = glm::mat4_cast(r) * dv; // convert from body to world frame
+    glm::quat &w = sat_transform.ang_vel;
+    w *= glm::quat(glm::vec3(0.0f, dw, 0.0f)); // increment angular velocity
+    r *= w;
+    glm::vec3 &v = sat_transform.lin_vel;
+    v += glm::vec3(dv); 
+    glm::vec3 &s = sat_transform.position;
+    s += v * elapsed; 
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
