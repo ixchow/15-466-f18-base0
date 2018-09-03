@@ -99,7 +99,9 @@ for name in to_write:
 				data += struct.pack('f', x)
 			#TODO: set 'col' based on object's active vertex colors array.
 			# you should be able to use code much like the texcoord code below.
-			col = mathutils.Color((1.0, 1.0, 1.0))
+			# col = mathutils.Color((1.0, 1.0, 1.0))
+			# based on http://blenderscripting.blogspot.com/2013/03/vertex-color-map.html
+			col = mesh.vertex_colors.active.data[poly.vertices[i]].color
 			data += struct.pack('BBBB', int(col.r * 255), int(col.g * 255), int(col.b * 255), 255)
 
 			if do_texcoord:
