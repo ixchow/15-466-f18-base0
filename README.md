@@ -1,11 +1,11 @@
 # Game Information
 (Note: fill in this portion with information about your game.)
 
-Title: (TODO: your game's title)
+Title: Asteroid Wrangling
 
-Author: (TODO: your name)
+Author: Edward Terry
 
-Design Document: [TODO: name of design document](TODO: link to design document)
+Design Document: Asteroid Wrangling (http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/eterry/)
 
 Screen Shot:
 
@@ -13,11 +13,14 @@ Screen Shot:
 
 Difficulties Encountered:
 
-TODO: write several sentences about any difficulties you may have encountered in creating the game.
+The difficulties I encountered fell into three categories:
+- Managing transformations and dynamics. Depending on the orientation of Blender models, it took some trial and error to orient the models correctly and to coordinate the controls in a consistent way. Tuning the parameters for satellite speed, fuel burn rates and rate of object generation was an iterative process and ultimately converged on a moderately difficult environment.
+- Data types for time. I had planned to spawn objects at regular time intervals, but was having trouble converting the current time to a useable type (i.e., float). In the end the trigger to spawn objects was a certain number of update cycles.
+- Texture management. I had intended to apply a galaxy background to the game but had a hard time applying a texture to the object in Blender. Despite several attempts, I was unable to achieve a non-black texture.
 
 Good Code:
 
-TODO: write a sentence or two about any code you think you did particularly well.
+I was happy with the way I encapsulated the spawning behavior into a single function, which receives the type of object to be created as an argument. This is also the first time I've used inline functions, which prevents the scope expanding beyond its local use. The soundtrack which I recorded and the asteroid model which I made are both unique features which enhance the game atmosphere.
 
 # Using This Base Code
 

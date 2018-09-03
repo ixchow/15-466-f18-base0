@@ -23,7 +23,7 @@
 int main(int argc, char **argv) {
 	struct {
 		//TODO: this is where you set the title and size of your game window
-		std::string title = "TODO: Game Title";
+		std::string title = "Asteroid Wrangling";
 		glm::uvec2 size = glm::uvec2(640, 400);
 	} config;
 
@@ -110,11 +110,12 @@ int main(int argc, char **argv) {
 	};
 	on_resize();
 
+	uint32_t num_frames = 0;
+
 	//This will loop until the game object is set to null:
 	while (game) {
 		//every pass through the game loop creates one frame of output
 		//  by performing three steps:
-
 		{ //(1) process any events that are pending
 			static SDL_Event evt;
 			while (SDL_PollEvent(&evt) == 1) {
@@ -143,7 +144,7 @@ int main(int argc, char **argv) {
 			//lag to avoid spiral of death:
 			elapsed = std::min(0.1f, elapsed);
 
-			game->update(elapsed);
+			game->update(elapsed, num_frames);
 			if (!game) break;
 		}
 
@@ -156,6 +157,7 @@ int main(int argc, char **argv) {
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			game->draw(drawable_size);
+			num_frames++;
 		}
 
 		//Finally, wait until the recently-drawn frame is shown before doing it all again:

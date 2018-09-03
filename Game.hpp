@@ -63,6 +63,8 @@ struct Game {
     Mesh sat_mesh;
     Mesh asteroid_mesh;
     Mesh junk_mesh;
+    Mesh health_bar_win_mesh;
+    Mesh health_bar_foreground_mesh;
 
     GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
@@ -75,20 +77,18 @@ struct Game {
         glm::vec3 lin_vel;
     };
 
-    float fuel = 1.0f; // starts full
-    float fuel_burn_increment = 0.001f;
-    float fuel_asteroid_increment = 0.1f;
+    float fuel = 0.6f;
+    float fuel_burn_increment = 0.0005f;
+    float fuel_asteroid_increment = 0.03f;
 
-    uint32_t asteroid_spawn_interval = 4000;
-    uint32_t junk_spawn_interval = 2000;
+    uint32_t asteroid_spawn_interval = 800;
+    uint32_t junk_spawn_interval = 400;
 
-    float asteroid_capture_distance = 0.05f;
-    float collision_min_distance = 0.02f;
+    float asteroid_capture_distance = 0.07f;
+    float collision_min_distance = 0.1f;
 
     glm::vec2 frame_max = glm::vec2(0.85f, 0.5f);
     glm::vec2 frame_min = glm::vec2(-0.85f, -0.5f);
-
-    glm::vec3 gripper_offset = glm::vec3(0.0f, 0.1f, 0.0f);
 
     struct {
         bool yaw_left = false;
@@ -112,15 +112,6 @@ struct Game {
             glm::vec3(0.0f)}, // stationary
         true};
 
-    FlyingObject gripper {
-        {   glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)), // start pointing upwards
-            glm::quat(1.0f, 0.0f, 0.0f, 0.0f), // not rotating
-            gripper_offset, // offset
-            glm::vec3(0.0f)}, // stationary
-        true};
-
     std::vector<FlyingObject> asteroids;
     std::vector<FlyingObject> junks;
-
-
 };

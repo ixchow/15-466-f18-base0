@@ -183,6 +183,8 @@ Game::Game() {
         sat_mesh = lookup("Satellite");
         asteroid_mesh = lookup("Asteroid");
         junk_mesh = lookup("Junk");
+        health_bar_win_mesh = lookup("HealthBarWin");
+        health_bar_foreground_mesh = lookup("HealthBarForeground");
 
     }
 
@@ -206,22 +208,24 @@ Game::Game() {
 
     // initialize audio
     // based on https://www.youtube.com/watch?v=U3IsueoqG58
-    SDL_Init(SDL_INIT_AUDIO);
+    {
+        SDL_Init(SDL_INIT_AUDIO);
 
-    SDL_AudioSpec want, have;
+        SDL_AudioSpec want, have;
 
-    SDL_memset(&want, 0, sizeof(want));
-    want.freq = 44100;
-    want.format = AUDIO_S16;
-    want.channels = 2;
-    want.samples = 4096;
-    auto audio = SDL_OpenAudioDevice(nullptr, false, &want, &have, 0);
+        SDL_memset(&want, 0, sizeof(want));
+        want.freq = 44100;
+        want.format = AUDIO_S16;
+        want.channels = 2;
+        want.samples = 4096;
+        auto audio = SDL_OpenAudioDevice(nullptr, false, &want, &have, 0);
 
-    Uint32 wav_length;
-    Uint8 *wav_buffer;
-    SDL_LoadWAV("sound.wav", &have, &wav_buffer, &wav_length);
-    SDL_QueueAudio(audio, wav_buffer, wav_length);
-    SDL_PauseAudioDevice(audio, false);
+        Uint32 wav_length;
+        Uint8 *wav_buffer;
+        SDL_LoadWAV("sound.wav", &have, &wav_buffer, &wav_length);
+        SDL_QueueAudio(audio, wav_buffer, wav_length);
+        SDL_PauseAudioDevice(audio, false);
+    }
 
     GL_ERRORS();
 
@@ -283,11 +287,9 @@ void Game::update(float elapsed, uint32_t num_frames) {
         return glm::distance(obj1.position, obj2.position);
     };
 
-    // std::cout<<current_time<<std::endl;
-
     {
         float amt_lin = elapsed * 0.2f; // translation unit
-        float amt_rot = elapsed * 0.05f; // rotation unit
+        float amt_rot = elapsed * 0.03f; // rotation unit
         glm::vec4 dv = glm::vec4(0.0f); // linear velocity increment
         float dw = 0.0f; // angular velocity increment
         int thruster_count = 0;
@@ -322,7 +324,6 @@ void Game::update(float elapsed, uint32_t num_frames) {
         glm::quat &w = sat.transform.ang_vel;
         glm::vec3 &s = sat.transform.position;
         glm::vec3 &v = sat.transform.lin_vel;
-        // glm::vec3 &g = gripper.transform.position;
         dv = glm::mat4_cast(r) * dv; // convert from body to world frame
         w *= glm::quat(glm::vec3(0.0f, 0.0f, dw)); // increment angular velocity
         w = glm::normalize(w);
@@ -330,7 +331,6 @@ void Game::update(float elapsed, uint32_t num_frames) {
         r = glm::normalize(r);
         v += glm::vec3(dv); 
         s += v * elapsed; 
-        // std::cout<<to_string(g)<<std::endl;
         fuel -= thruster_count * fuel_burn_increment;
     }
 
@@ -352,20 +352,22 @@ void Game::update(float elapsed, uint32_t num_frames) {
         s += glm::vec3(elapsed * v.x, elapsed * v.y, 0.0f); 
     }
 
-    {
-        for (auto& asteroid: asteroids){
-
-            if ((compute_distance(sat.transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
-                asteroid.active = false;
-                fuel += fuel_asteroid_increment;
-            }
+    for (auto& asteroid: asteroids){
+        if ((compute_distance(sat.transform, asteroid.transform))<=asteroid_capture_distance && controls.grab){
+            asteroid.active = false;
+            fuel += fuel_asteroid_increment;
         }
+    }
 
-        for (auto& junk: junks){
-            if ((compute_distance(sat.transform, junk.transform))<=collision_min_distance){
-                sat.active = false;
-            }
-        }        
+    for (auto& junk: junks){
+        if ((compute_distance(sat.transform, junk.transform))<=collision_min_distance){
+            sat.active = false;
+        }
+    }        
+
+
+    if (fuel < 0.0f){
+        sat.active = false;
     }
 
     auto spawn_object = [&](std::vector<FlyingObject> &objs, int edge){
@@ -484,32 +486,41 @@ void Game::draw(glm::uvec2 drawable_size) {
     if (sat.active){
         draw_mesh(sat_mesh,
             glm::mat4(
-                0.2f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.2f, 0.0f, 0.0f,
+                0.15f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.15f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
                 sat.transform.position.x, sat.transform.position.y, 0.0f, 1.0f
             )
             * glm::mat4_cast(sat.transform.rotation)
         );
+        if (fuel>1.0f){
+            draw_mesh(health_bar_win_mesh,
+                glm::mat4(
+                    0.03f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.3f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    -0.7f, 0.0f, -0.1f, 1.0f
+                )
+            );
+        } else {
+            draw_mesh(health_bar_foreground_mesh,
+                glm::mat4(
+                    0.03f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.3f*fuel, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    -0.7f, 0.0f, -0.1f, 1.0f
+                )
+            );            
+        }
+
     }
-
-
-    // draw_mesh(background_mesh,
-    //     glm::mat4(
-    //         0.3f, 0.0f, 0.0f, 0.0f,
-    //         0.0f, 0.3f, 0.0f, 0.0f,
-    //         0.0f, 0.0f, 0.1f, 0.0f,
-    //         0.0f, 0.0f, 0.0f, 1.0f
-    //     )
-    //     * glm::mat4_cast(glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f)))
-    // );
 
     for (auto &asteroid: asteroids){
         if (asteroid.active){
             draw_mesh(asteroid_mesh,
                 glm::mat4(
-                    0.04f, 0.0f, 0.0f, 0.0f,
-                    0.0f, 0.04f, 0.0f, 0.0f,
+                    0.035f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.035f, 0.0f, 0.0f,
                     0.0f, 0.0f, 0.1f, 0.0f,
                     asteroid.transform.position.x, asteroid.transform.position.y, 0.0f, 1.0f
                 )
@@ -521,8 +532,8 @@ void Game::draw(glm::uvec2 drawable_size) {
     for (auto &junk: junks){
         draw_mesh(junk_mesh,
             glm::mat4(
-                0.03f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.03f, 0.0f, 0.0f,
+                0.025f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.025f, 0.0f, 0.0f,
                 0.0f, 0.0f, 0.1f, 0.0f,
                 junk.transform.position.x, junk.transform.position.y, 0.0f, 1.0f
             )

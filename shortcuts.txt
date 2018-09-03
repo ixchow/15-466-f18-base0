@@ -1,0 +1,1 @@
+blender --background --python meshes/export-meshes.py -- meshes/asteroid_game_meshes.blend dist/asteroid_game_meshes.blob
